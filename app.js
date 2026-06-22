@@ -326,6 +326,37 @@ function renderCart() {
     }
     
     calculateTotals();
+    
+    // Sync cart FAB badge, dynamic label & visibility
+    const totalQty = cart.reduce((acc, item) => acc + item.qty, 0);
+    document.getElementById("cart-fab-badge").textContent = totalQty;
+    
+    const subtotal = cart.reduce((acc, item) => acc + (item.product.price * item.qty), 0);
+    const discount = parseFloat(document.getElementById("cart-discount").value) || 0;
+    const total = Math.max(0, subtotal - discount);
+    const labelEl = document.getElementById("cart-fab-total-label");
+    if (labelEl) {
+        labelEl.textContent = `${totalQty} Item | ${formatRupiah(total)}`;
+    }
+    
+    updateCartFABVisibility();
+}
+
+// Update Cart FAB visibility on mobile
+function updateCartFABVisibility() {
+    const fab = document.getElementById("cart-fab");
+    if (!fab) return;
+    const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
+    const activeLink = document.querySelector(".nav-link.active");
+    const activeTab = activeLink ? activeLink.getAttribute("data-target") : "pos-section";
+    const cartPanel = document.querySelector(".cart-panel");
+    const isCartOpen = cartPanel ? cartPanel.classList.contains("open") : false;
+
+    if (cartCount > 0 && activeTab === "pos-section" && !isCartOpen) {
+        fab.classList.add("visible");
+    } else {
+        fab.classList.remove("visible");
+    }
 }
 
 // Calculate Shopping Cart pricing totals
@@ -580,6 +611,13 @@ function clearCart() {
     document.getElementById("payment-cash").value = "";
     document.getElementById("cart-discount").value = 0;
     renderCart();
+    
+    // Close mobile cart panel if open
+    const cartPanel = document.querySelector(".cart-panel");
+    if (cartPanel) cartPanel.classList.remove("open");
+    const cartOverlay = document.getElementById("cart-overlay");
+    if (cartOverlay) cartOverlay.classList.remove("active");
+    document.body.classList.remove("cart-open");
 }
 
 // ==========================================
@@ -985,6 +1023,15 @@ function switchTab(sectionId) {
         "report-section": "Laporan Transaksi"
     };
     document.getElementById("page-title").textContent = titlesMap[sectionId] || "Dashboard";
+
+    // Mobile specific: close sidebar drawer
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar) sidebar.classList.remove("open");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+    if (sidebarOverlay) sidebarOverlay.classList.remove("active");
+    
+    // Update FAB visibility
+    updateCartFABVisibility();
 }
 
 // CRUD: Open modal to add product
@@ -1191,6 +1238,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 "report-section": "Laporan Transaksi"
             };
             document.getElementById("page-title").textContent = titlesMap[targetId];
+            
+            // Mobile specific drawer close and FAB update
+            const sidebar = document.querySelector(".sidebar");
+            if (sidebar) sidebar.classList.remove("open");
+            const sidebarOverlay = document.getElementById("sidebar-overlay");
+            if (sidebarOverlay) sidebarOverlay.classList.remove("active");
+            updateCartFABVisibility();
         });
     });
 
@@ -1283,4 +1337,60 @@ document.addEventListener("DOMContentLoaded", () => {
         e.preventDefault();
         saveProduct();
     });
+
+    // 13. Mobile Responsive Toggle Listeners (Sidebar Drawer & Bottom Sheet Cart)
+    const sidebar = document.querySelector(".sidebar");
+    const sidebarOverlay = document.getElementById("sidebar-overlay");
+    const hamburgerBtn = document.getElementById("hamburger-btn");
+    const closeSidebarBtn = document.getElementById("btn-close-sidebar");
+    
+    if (hamburgerBtn && sidebar && sidebarOverlay) {
+        hamburgerBtn.addEventListener("click", () => {
+            sidebar.classList.toggle("open");
+            sidebarOverlay.classList.toggle("active");
+        });
+        
+        const closeSidebar = () => {
+            sidebar.classList.remove("open");
+            sidebarOverlay.classList.remove("active");
+        };
+        
+        sidebarOverlay.addEventListener("click", closeSidebar);
+        if (closeSidebarBtn) {
+            closeSidebarBtn.addEventListener("click", closeSidebar);
+        }
+    }
+
+    const cartPanel = document.querySelector(".cart-panel");
+    const cartOverlay = document.getElementById("cart-overlay");
+    const cartFab = document.getElementById("cart-fab");
+    const btnCloseCart = document.getElementById("btn-close-cart");
+    
+    const closeCartPanel = () => {
+        if (cartPanel) cartPanel.classList.remove("open");
+        if (cartOverlay) cartOverlay.classList.remove("active");
+        document.body.classList.remove("cart-open");
+        updateCartFABVisibility();
+    };
+
+    if (cartFab && cartPanel && cartOverlay) {
+        cartFab.addEventListener("click", () => {
+            cartPanel.classList.add("open");
+            cartOverlay.classList.add("active");
+            document.body.classList.add("cart-open");
+            cartFab.classList.remove("visible");
+        });
+    }
+    
+    if (cartOverlay) {
+        cartOverlay.addEventListener("click", closeCartPanel);
+    }
+    
+    if (btnCloseCart) {
+        btnCloseCart.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeCartPanel();
+        });
+    }
 });
